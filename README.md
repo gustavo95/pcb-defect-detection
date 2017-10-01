@@ -1,7 +1,7 @@
 PCB Defect Detection<br />
 <Subtitle>
 
-This project aims to detect and classify defects in PCs using image processing techniques.<br />
+This project aims to detect and classify defects in PCBs using image processing techniques.<br />
 
 Gustavo Costa Gomes de Melo<br />
 gustavocosta@ic.ufal.br<br />
