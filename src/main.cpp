@@ -53,7 +53,7 @@ cv::Mat imgPreprocessor(Mat &img)
 {
     Mat result;
     threshold(img, result, 127, 255, CV_THRESH_BINARY);
-    result = Scalar(255) - result;
+    //result = Scalar(255) - result;
     return result;
 }
 
@@ -68,10 +68,10 @@ vector<Mat> imgSegmentation(Mat &img)
     bitwise_xor(detHole1, img, detHole);
 
     //Square pad segmentation
-    Mat kernel2 = getStructuringElement(0, Size(23, 23), Point(11, 11));
+    Mat kernel2 = getStructuringElement(0, Size(71, 71), Point(35, 35));
     Mat squarePad1, squarePad;
     morphologyEx(detHole1, squarePad1, MORPH_OPEN, kernel2);
-    dilate(squarePad1, squarePad, kernel2);
+    dilate(squarePad1, squarePad, img);
     imshow("img", squarePad1);
     imshow("img2", detHole1);
 
@@ -117,6 +117,8 @@ int main()
 
     imgSegmentation(testImg);
 
+    //-------Testing--------
+    /*
     int morph_sizex = 8;
     int morph_sizey = 8;
     int const max_kernel_size = 50;
@@ -130,23 +132,23 @@ int main()
     bitwise_xor(detHole1, testImg, detHole);
 
     //Square pad segmentation
-    Mat kernel2 = getStructuringElement(0, Size(23, 23), Point(11, 11));
+    Mat kernel2 = getStructuringElement(0, Size(71, 71), Point(35, 35));
     Mat squarePad1, squarePad;
     morphologyEx(detHole1, squarePad1, MORPH_OPEN, kernel2);
     //dilate(squarePad1, squarePad, kernel2);
     //imshow("img", squarePad1);
     imshow("img2", squarePad1);
+    dilate(squarePad1, img, testImg);
+    */
 
     for(;;)
     {
-
-        Mat kernel = getStructuringElement(0, Size(2*morph_sizex+1, 2*morph_sizey+1), Point( morph_sizex, morph_sizey));
+        //Mat kernel = getStructuringElement(0, Size(2*morph_sizex+1, 2*morph_sizey+1), Point( morph_sizex, morph_sizey));
         //morphologyEx(detHole1, img, MORPH_OPEN, kernel);
-        dilate(squarePad1, img, kernel);
 
         imshow("test", testImg);
         imshow("reference", refImg);
-        imshow("img", img);
+        //imshow("img", img);
         //imshow("img2", img2);
         if((char) waitKey(1) == 'q') break;
     }
