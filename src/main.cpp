@@ -52,7 +52,8 @@ cv::Mat imgAlignment(Mat &img1, Mat &img2)
 cv::Mat imgPreprocessor(Mat &img)
 {
     Mat result;
-    threshold(img, result, 127, 255, CV_THRESH_BINARY);
+    threshold(img, result, 47, 255, CV_THRESH_BINARY);
+    //threshold(img, result, 127, 255, CV_THRESH_BINARY);
     //result = Scalar(255) - result;
     return result;
 }
@@ -62,18 +63,31 @@ vector<Mat> imgSegmentation(Mat &img)
     vector<Mat> segments;
 
     //Hole detection
-    Mat kernel1 = getStructuringElement(0, Size(17, 17), Point(8, 8));
+    Mat kernel1 = getStructuringElement(0, Size(5, 5), Point(2, 2));
     Mat detHole1, detHole;
     morphologyEx(img, detHole1, MORPH_CLOSE, kernel1);
+    //detHole1 = img;
     bitwise_xor(detHole1, img, detHole);
 
     //Square pad segmentation
-    Mat kernel2 = getStructuringElement(0, Size(71, 71), Point(35, 35));
+    Mat kernel2 = getStructuringElement(0, Size(31, 31), Point(15, 15));
     Mat squarePad1, squarePad;
     morphologyEx(detHole1, squarePad1, MORPH_OPEN, kernel2);
     dilate(squarePad1, squarePad, img);
-    imshow("img", squarePad1);
-    imshow("img2", detHole1);
+
+    //Hole pad segmentation
+    Mat holePad1, holePad2, holePad;
+    Mat kernel3 = getStructuringElement(0, Size(7, 7), Point(3, 3));
+    bitwise_xor(detHole1, squarePad1, holePad1);
+    morphologyEx(holePad1, holePad2, MORPH_OPEN, kernel3);
+    dilate(holePad1, holePad, holePad2);
+
+    //Rectangular pad segmentation
+    Mat rectPad1, rectPad2;
+    bitwise_xor(holePad1, holePad2, rectPad1);
+    morphologyEx(rectPad1, rectPad2, MORPH_OPEN, kernel1);
+    imshow("img", rectPad1);
+    imshow("img2", rectPad2);
 
     return segments;
 }
@@ -85,8 +99,8 @@ int main()
     namedWindow("img", WINDOW_KEEPRATIO);
     namedWindow("img2", WINDOW_KEEPRATIO);
 
-    Mat testImg = imread("test.png", CV_LOAD_IMAGE_GRAYSCALE);
-    Mat refImg = imread("ref.png", CV_LOAD_IMAGE_GRAYSCALE);
+    Mat testImg = imread("test_pcb.png", CV_LOAD_IMAGE_GRAYSCALE);
+    Mat refImg = imread("ref_pcb.png", CV_LOAD_IMAGE_GRAYSCALE);
     Mat img, img2;
 
     if(!testImg.data)
@@ -103,53 +117,53 @@ int main()
 
     resize(refImg, refImg, testImg.size(), 0, 0, INTER_LINEAR);
 
-    refImg = imgAlignment(testImg, refImg);
+    //refImg = imgAlignment(testImg, refImg);
 
     testImg = imgPreprocessor(testImg);
     refImg = imgPreprocessor(refImg);
 
-    //img = testImg - refImg;
-    //img2 = refImg - testImg;
-
-    //Mat kernel = getStructuringElement(0, Size(7, 7), Point(3, 3));
-    //morphologyEx(img, img, MORPH_OPEN, kernel);
-    //morphologyEx(img2, img2, MORPH_OPEN, kernel);
-
     imgSegmentation(testImg);
 
     //-------Testing--------
+    //*
+    int x = 8;
+    createTrackbar( "x:", "img", &x, 55, 0);
     /*
-    int morph_sizex = 8;
-    int morph_sizey = 8;
-    int const max_kernel_size = 50;
-    createTrackbar( "Kernel size x:", "img", &morph_sizex, max_kernel_size, 0);
-    createTrackbar( "Kernel size y:", "img", &morph_sizey, max_kernel_size, 0);
-
     //Hole detection
-    Mat kernel1 = getStructuringElement(0, Size(17, 17), Point(8, 8));
+    Mat kernel1 = getStructuringElement(0, Size(3, 3), Point(1, 1));
     Mat detHole1, detHole;
     morphologyEx(testImg, detHole1, MORPH_CLOSE, kernel1);
     bitwise_xor(detHole1, testImg, detHole);
 
     //Square pad segmentation
-    Mat kernel2 = getStructuringElement(0, Size(71, 71), Point(35, 35));
+    Mat kernel2 = getStructuringElement(0, Size(31, 31), Point(15, 15));
     Mat squarePad1, squarePad;
     morphologyEx(detHole1, squarePad1, MORPH_OPEN, kernel2);
-    //dilate(squarePad1, squarePad, kernel2);
-    //imshow("img", squarePad1);
-    imshow("img2", squarePad1);
-    dilate(squarePad1, img, testImg);
-    */
+    dilate(squarePad1, squarePad, testImg);
+
+    //Hole pad segmentation
+    Mat holePad1, holePad2, holePad;
+    Mat kernel3 = getStructuringElement(0, Size(7, 7), Point(3, 3));
+    bitwise_xor(detHole1, squarePad1, holePad1);
+    morphologyEx(holePad1, holePad2, MORPH_OPEN, kernel3);
+    dilate(holePad1, holePad, holePad2);
+
+    //Rectangular pad segmentation
+    Mat rectPad1, rectPad2;
+    bitwise_xor(holePad1, holePad2, rectPad1);
+    //*/
 
     for(;;)
     {
-        //Mat kernel = getStructuringElement(0, Size(2*morph_sizex+1, 2*morph_sizey+1), Point( morph_sizex, morph_sizey));
-        //morphologyEx(detHole1, img, MORPH_OPEN, kernel);
+        //Mat kernel4 = getStructuringElement(2, Size(x*2 +1, x*2 +1), Point(x, x));
+        //morphologyEx(testImg, detHole1, MORPH_CLOSE, kernel1);
+
+        //morphologyEx(rectPad1, rectPad2, MORPH_OPEN, kernel4);
 
         imshow("test", testImg);
         imshow("reference", refImg);
-        //imshow("img", img);
-        //imshow("img2", img2);
+        //imshow("img", rectPad1);
+        //imshow("img2", rectPad2);
         if((char) waitKey(1) == 'q') break;
     }
 
