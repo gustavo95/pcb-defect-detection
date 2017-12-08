@@ -61,9 +61,10 @@ cv::Mat imgPreprocessor(Mat &img)
 vector<Mat> imgSegmentation(Mat &img)
 {
     vector<Mat> segments;
+    segments.reserve(4);
 
     //Hole detection
-    Mat kernel1 = getStructuringElement(0, Size(5, 5), Point(2, 2));
+    Mat kernel1 = getStructuringElement(2, Size(4, 4), Point(2, 2));
     Mat detHole1, detHole;
     morphologyEx(img, detHole1, MORPH_CLOSE, kernel1);
     //detHole1 = img;
@@ -71,30 +72,31 @@ vector<Mat> imgSegmentation(Mat &img)
 
     //Square pad segmentation
     Mat kernel2 = getStructuringElement(0, Size(31, 31), Point(15, 15));
-    Mat squarePad1, squarePad;
+    Mat squarePad1;
     morphologyEx(detHole1, squarePad1, MORPH_OPEN, kernel2);
-    dilate(squarePad1, squarePad, img);
 
     //Hole pad segmentation
-    Mat holePad1, holePad2, holePad;
+    Mat holePad1, holePad2;
     Mat kernel3 = getStructuringElement(0, Size(7, 7), Point(3, 3));
     bitwise_xor(detHole1, squarePad1, holePad1);
     morphologyEx(holePad1, holePad2, MORPH_OPEN, kernel3);
-    dilate(holePad1, holePad, holePad2);
 
     //Rectangular pad segmentation
-    Mat rectPad1, rectPad2, rectPad;
+    Mat rectPad1, rectPad2;
+    Mat kernel4 = getStructuringElement(2, Size(5, 5), Point(2, 2));
     bitwise_xor(holePad1, holePad2, rectPad1);
-    morphologyEx(rectPad1, rectPad2, MORPH_OPEN, kernel1);
-    dilate(rectPad2, rectPad, img);
+    morphologyEx(rectPad1, rectPad2, MORPH_OPEN, kernel4);
 
     //Thick line segmentation
     Mat thickLine1, thickLine2;
     bitwise_xor(rectPad1, rectPad2, thickLine1);
-    Mat kernel4 = getStructuringElement(0, Size(3, 3), Point(1, 1));
-    morphologyEx(thickLine1, thickLine2, MORPH_OPEN, kernel4);
-    imshow("img", thickLine1);
-    imshow("img2", thickLine2);
+    Mat kernel5 = getStructuringElement(0, Size(3, 3), Point(1, 1));
+    morphologyEx(thickLine1, thickLine2, MORPH_OPEN, kernel5);
+
+    segments.push_back(squarePad1); //Square
+    segments.push_back(holePad2);   //Hole
+    segments.push_back(thickLine2); //Thick Line
+    segments.push_back(rectPad2);   //Thin Line
 
     return segments;
 }
@@ -129,57 +131,16 @@ int main()
     testImg = imgPreprocessor(testImg);
     refImg = imgPreprocessor(refImg);
 
-    imgSegmentation(testImg);
-
-    //-------Testing--------
-    //*
-    int x = 8;
-    //createTrackbar( "x:", "img", &x, 55, 0);
-    /*
-    //Hole detection
-    Mat kernel1 = getStructuringElement(0, Size(5, 5), Point(2, 2));
-    Mat detHole1, detHole;
-    morphologyEx(testImg, detHole1, MORPH_CLOSE, kernel1);
-    //detHole1 = img;
-    bitwise_xor(detHole1, testImg, detHole);
-
-    //Square pad segmentation
-    Mat kernel2 = getStructuringElement(0, Size(31, 31), Point(15, 15));
-    Mat squarePad1, squarePad;
-    morphologyEx(detHole1, squarePad1, MORPH_OPEN, kernel2);
-    dilate(squarePad1, squarePad, testImg);
-
-    //Hole pad segmentation
-    Mat holePad1, holePad2, holePad;
-    Mat kernel3 = getStructuringElement(0, Size(7, 7), Point(3, 3));
-    bitwise_xor(detHole1, squarePad1, holePad1);
-    morphologyEx(holePad1, holePad2, MORPH_OPEN, kernel3);
-    dilate(holePad1, holePad, holePad2);
-
-    //Rectangular pad segmentation
-    Mat rectPad1, rectPad2, rectPad;
-    bitwise_xor(holePad1, holePad2, rectPad1);
-    morphologyEx(rectPad1, rectPad2, MORPH_OPEN, kernel1);
-    dilate(rectPad2, rectPad, testImg);
-
-    //Thick line segmentation
-    Mat thickLine1, thickLine2, thickLine;
-    bitwise_xor(rectPad1, rectPad2, thickLine1);
-    Mat kernel4 = getStructuringElement(0, Size(3, 3), Point(1, 1));
-    morphologyEx(thickLine1, thickLine2, MORPH_OPEN, kernel4);
-    //*/
+    vector<Mat> refSegments = imgSegmentation(refImg);
+    vector<Mat> testSegments = imgSegmentation(testImg);
 
     for(;;)
     {
-        //Mat kernel5 = getStructuringElement(2, Size(x*2 +1, x*2 +1), Point(x, x));
-        //morphologyEx(testImg, detHole1, MORPH_CLOSE, kernel1);
+        imshow("test", testSegments[0]);
+        imshow("reference", testSegments[1]);
+        imshow("img", testSegments[2]);
+        imshow("img2", testSegments[3]);
 
-        //morphologyEx(thickLine2, thickLine, MORPH_CLOSE, kernel5);
-
-        imshow("test", testImg);
-        imshow("reference", refImg);
-        //imshow("img", thickLine);
-        //imshow("img2", thickLine2);
         if((char) waitKey(1) == 'q') break;
     }
 
