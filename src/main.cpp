@@ -53,8 +53,6 @@ cv::Mat imgPreprocessor(Mat &img)
 {
     Mat result;
     threshold(img, result, 47, 255, CV_THRESH_BINARY);
-    //threshold(img, result, 127, 255, CV_THRESH_BINARY);
-    //result = Scalar(255) - result;
     return result;
 }
 
@@ -87,30 +85,23 @@ vector<Mat> imgSegmentation(Mat &img)
     bitwise_xor(holePad1, holePad2, rectPad1);
     morphologyEx(rectPad1, rectPad2, MORPH_OPEN, kernel4);
 
-    //Thick line segmentation
-    Mat thickLine1, thickLine2;
-    bitwise_xor(rectPad1, rectPad2, thickLine1);
-    Mat kernel5 = getStructuringElement(0, Size(3, 3), Point(1, 1));
-    morphologyEx(thickLine1, thickLine2, MORPH_OPEN, kernel5);
-
     segments.push_back(squarePad1); //Square
     segments.push_back(holePad2);   //Hole
-    segments.push_back(thickLine2); //Thick Line
-    segments.push_back(rectPad2);   //Thin Line
+    segments.push_back(rectPad2);   //Line
 
     return segments;
 }
 
 int main()
 {
-    namedWindow("test", WINDOW_KEEPRATIO);
-    namedWindow("reference", WINDOW_KEEPRATIO);
-    namedWindow("img", WINDOW_KEEPRATIO);
+    namedWindow("img1", WINDOW_KEEPRATIO);
     namedWindow("img2", WINDOW_KEEPRATIO);
+    namedWindow("img3", WINDOW_KEEPRATIO);
+    namedWindow("img4", WINDOW_KEEPRATIO);
+    namedWindow("img5", WINDOW_KEEPRATIO);
 
     Mat testImg = imread("test_pcb.png", CV_LOAD_IMAGE_GRAYSCALE);
     Mat refImg = imread("ref_pcb.png", CV_LOAD_IMAGE_GRAYSCALE);
-    Mat img, img2;
 
     if(!testImg.data)
     {
@@ -134,12 +125,74 @@ int main()
     vector<Mat> refSegments = imgSegmentation(refImg);
     vector<Mat> testSegments = imgSegmentation(testImg);
 
+    //Positive - Missing
+    //Negative - Execive
+    Mat G13, G21, G22, G42, G43;
+    G13 = testSegments[0] - refSegments[0];
+    G21 = testSegments[1] - refSegments[1];
+    G22 = refSegments[1] - testSegments[1];
+    G42 = testSegments[2] - refSegments[2];
+    G43 = refSegments[2] - testSegments[2];
+
+    cvtColor(testImg, testImg, CV_GRAY2BGR);
+    vector<Vec4i> lines;
+    HoughLinesP(G13, lines, 1, CV_PI/180, 0, 0, 0);
+    for(size_t i = 0; i < lines.size(); i++)
+    {
+        Vec4i l = lines[i];
+        line(testImg, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+    }
+
+    HoughLinesP(G21, lines, 1, CV_PI/180, 8, 8, 0);
+    for(size_t i = 0; i < lines.size(); i++)
+    {
+        Vec4i l = lines[i];
+        line(testImg, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+    }
+
+    HoughLinesP(G22, lines, 1, CV_PI/180, 0, 0, 0);
+    for(size_t i = 0; i < lines.size(); i++)
+    {
+        Vec4i l = lines[i];
+        line(testImg, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+    }
+
+    HoughLinesP(G42-G22, lines, 1, CV_PI/180, 0, 0, 0);
+    for(size_t i = 0; i < lines.size(); i++)
+    {
+        Vec4i l = lines[i];
+        line(testImg, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+    }
+
+    HoughLinesP(G43, lines, 1, CV_PI/180, 0, 0, 0);
+    for(size_t i = 0; i < lines.size(); i++)
+    {
+        Vec4i l = lines[i];
+        line(testImg, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+    }
+
+    Mat img = testImg.clone();
+
+    int x = 8;
+    int y = 8;
+    int z = 8;
+    createTrackbar( "x:", "img5", &x, 200, 0);
+    createTrackbar( "y:", "img5", &y, 200, 0);
+    createTrackbar( "z:", "img5", &z, 200, 0);
+
     for(;;)
     {
-        imshow("test", testSegments[0]);
-        imshow("reference", testSegments[1]);
-        imshow("img", testSegments[2]);
-        imshow("img2", testSegments[3]);
+        imshow("img1", G13);
+        imshow("img2", G21);
+        imshow("img3", G22);
+        imshow("img4", G42-G22);
+        imshow("img5", G43);
+        imshow("img7", testSegments[2]);
+        imshow("img8", refSegments[2]);
+
+        img = testImg.clone();
+
+        imshow("img6", img);
 
         if((char) waitKey(1) == 'q') break;
     }
