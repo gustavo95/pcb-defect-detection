@@ -56,6 +56,19 @@ cv::Mat imgPreprocessor(Mat &img)
     return result;
 }
 
+cv::Mat imfill(Mat &img)
+{
+    Mat im_floodfill = img.clone();
+    floodFill(im_floodfill, cv::Point(0,0), Scalar(255));
+
+    bitwise_not(im_floodfill, im_floodfill);
+
+    // Combine the two images to get the foreground.
+    Mat im_out = (img | im_floodfill);
+
+    return im_out;
+}
+
 vector<Mat> imgSegmentation(Mat &img)
 {
     vector<Mat> segments;
@@ -76,6 +89,7 @@ vector<Mat> imgSegmentation(Mat &img)
     //Hole pad segmentation
     Mat holePad1, holePad2;
     Mat kernel3 = getStructuringElement(0, Size(7, 7), Point(3, 3));
+    //Mat kernel3 = getStructuringElement(0, Size(3, 3), Point(1, 1));
     bitwise_xor(detHole1, squarePad1, holePad1);
     morphologyEx(holePad1, holePad2, MORPH_OPEN, kernel3);
 
@@ -85,9 +99,9 @@ vector<Mat> imgSegmentation(Mat &img)
     bitwise_xor(holePad1, holePad2, rectPad1);
     morphologyEx(rectPad1, rectPad2, MORPH_OPEN, kernel4);
 
-    segments.push_back(squarePad1); //Square
-    segments.push_back(holePad2);   //Hole
-    segments.push_back(rectPad2);   //Line
+    segments.push_back(squarePad1 & img); //Square
+    segments.push_back(holePad2 & img);   //Hole
+    segments.push_back(rectPad2 & img);   //Line
 
     return segments;
 }
@@ -125,74 +139,95 @@ int main()
     vector<Mat> refSegments = imgSegmentation(refImg);
     vector<Mat> testSegments = imgSegmentation(testImg);
 
-    //Positive - Missing
-    //Negative - Execive
-    Mat G13, G21, G22, G42, G43;
-    G13 = testSegments[0] - refSegments[0];
+    //Negative - Execive Gx1
+    //Positive - Missing Gx2
+    Mat G11, G12, G21, G22, G31, G32;
+    G11 = testSegments[0] - refSegments[0];
+    G12 = refSegments[0] - testSegments[0];
     G21 = testSegments[1] - refSegments[1];
     G22 = refSegments[1] - testSegments[1];
-    G42 = testSegments[2] - refSegments[2];
-    G43 = refSegments[2] - testSegments[2];
+    G31 = testSegments[2] - refSegments[2];
+    G32 = refSegments[2] - testSegments[2];
 
     cvtColor(testImg, testImg, CV_GRAY2BGR);
+    Mat squareDefects = testImg.clone();
+    Mat holeDefects = testImg.clone();
+    Mat lineDefects = testImg.clone();
+    Mat allDefects = testImg.clone();
+
     vector<Vec4i> lines;
-    HoughLinesP(G13, lines, 1, CV_PI/180, 0, 0, 0);
+    HoughLinesP(G11, lines, 1, CV_PI/180, 0, 0, 0);
     for(size_t i = 0; i < lines.size(); i++)
     {
         Vec4i l = lines[i];
-        line(testImg, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+        line(squareDefects, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+        line(allDefects, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
     }
 
-    HoughLinesP(G21, lines, 1, CV_PI/180, 8, 8, 0);
+    HoughLinesP(G12, lines, 1, CV_PI/180, 0, 0, 0);
     for(size_t i = 0; i < lines.size(); i++)
     {
         Vec4i l = lines[i];
-        line(testImg, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+        line(squareDefects, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 2, 1);
+        line(allDefects, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 2, 1);
+    }
+
+    HoughLinesP(G21-G32, lines, 1, CV_PI/180, 0, 0, 0);
+    for(size_t i = 0; i < lines.size(); i++)
+    {
+        Vec4i l = lines[i];
+        line(holeDefects, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+        line(allDefects, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
     }
 
     HoughLinesP(G22, lines, 1, CV_PI/180, 0, 0, 0);
     for(size_t i = 0; i < lines.size(); i++)
     {
         Vec4i l = lines[i];
-        line(testImg, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+        line(holeDefects, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 2, 1);
+        line(allDefects, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 2, 1);
     }
 
-    HoughLinesP(G42-G22, lines, 1, CV_PI/180, 0, 0, 0);
+    HoughLinesP(G31-G22, lines, 1, CV_PI/180, 1, 1, 0);
     for(size_t i = 0; i < lines.size(); i++)
     {
         Vec4i l = lines[i];
-        line(testImg, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+        line(lineDefects, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+        line(allDefects, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
     }
 
-    HoughLinesP(G43, lines, 1, CV_PI/180, 0, 0, 0);
+    HoughLinesP(G32-G21, lines, 1, CV_PI/180, 3, 3, 0);
     for(size_t i = 0; i < lines.size(); i++)
     {
         Vec4i l = lines[i];
-        line(testImg, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 2, 1);
+        line(lineDefects, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 2, 1);
+        line(allDefects, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 2, 1);
     }
 
-    Mat img = testImg.clone();
-
-    int x = 8;
-    int y = 8;
-    int z = 8;
-    createTrackbar( "x:", "img5", &x, 200, 0);
-    createTrackbar( "y:", "img5", &y, 200, 0);
-    createTrackbar( "z:", "img5", &z, 200, 0);
+    int defectType = 3;
+    createTrackbar( "Type: ", "img3", &defectType, 3, 0);
 
     for(;;)
     {
-        imshow("img1", G13);
-        imshow("img2", G21);
-        imshow("img3", G22);
-        imshow("img4", G42-G22);
-        imshow("img5", G43);
-        imshow("img7", testSegments[2]);
-        imshow("img8", refSegments[2]);
+        imshow("img1", refImg);
+        imshow("img2", testImg);
+        imshow("img4", refSegments[2]);
+        imshow("img5", testSegments[2]);
 
-        img = testImg.clone();
-
-        imshow("img6", img);
+        switch (defectType) {
+        case 0:
+            imshow("img3", squareDefects);
+            break;
+        case 1:
+            imshow("img3", holeDefects);
+            break;
+        case 2:
+            imshow("img3", lineDefects);
+            break;
+        default:
+            imshow("img3", allDefects);
+            break;
+        }
 
         if((char) waitKey(1) == 'q') break;
     }
