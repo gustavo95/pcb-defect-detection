@@ -111,8 +111,8 @@ int main()
     namedWindow("img1", WINDOW_KEEPRATIO);
     namedWindow("img2", WINDOW_KEEPRATIO);
     namedWindow("img3", WINDOW_KEEPRATIO);
-    namedWindow("img4", WINDOW_KEEPRATIO);
-    namedWindow("img5", WINDOW_KEEPRATIO);
+    //namedWindow("img4", WINDOW_KEEPRATIO);
+    //namedWindow("img5", WINDOW_KEEPRATIO);
 
     Mat testImg = imread("test_pcb.png", CV_LOAD_IMAGE_GRAYSCALE);
     Mat refImg = imread("ref_pcb.png", CV_LOAD_IMAGE_GRAYSCALE);
@@ -211,8 +211,8 @@ int main()
     {
         imshow("img1", refImg);
         imshow("img2", testImg);
-        imshow("img4", refSegments[2]);
-        imshow("img5", testSegments[2]);
+        //imshow("img4", refSegments[2]);
+        //imshow("img5", testSegments[2]);
 
         switch (defectType) {
         case 0:
